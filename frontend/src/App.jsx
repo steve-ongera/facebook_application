@@ -1,35 +1,66 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { createContext, useContext, useState, useEffect } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import Navbar from './components/Navbar'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import FeedPage from './pages/FeedPage'
+import ProfilePage from './pages/ProfilePage'
+import MessagesPage from './pages/MessagesPage'
+import { getCurrentUser } from './services/api'
 
-function App() {
-  const [count, setCount] = useState(0)
+// ─── Auth Context ─────────────────────────────────────────────────────────────
+export const AuthContext = createContext(null)
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+export function useAuth() {
+  return useContext(AuthContext)
 }
 
-export default App
+function PrivateRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <div className="loading-screen"><div className="spinner" /></div>
+  return user ? children : <Navigate to="/login" />
+}
+
+export default function App() {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      getCurrentUser()
+        .then(data => setUser(data))
+        .catch(() => localStorage.clear())
+        .finally(() => setLoading(false))
+    } else {
+      setLoading(false)
+    }
+  }, [])
+
+  const login = (userData, tokens) => {
+    localStorage.setItem('access_token', tokens.access)
+    localStorage.setItem('refresh_token', tokens.refresh)
+    setUser(userData)
+  }
+
+  const logout = () => {
+    localStorage.clear()
+    setUser(null)
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, setUser, login, logout, loading }}>
+      {user && <Navbar />}
+      <main className={user ? 'main-with-nav' : ''}>
+        <Routes>
+          <Route path="/login"    element={user ? <Navigate to="/" /> : <LoginPage />} />
+          <Route path="/register" element={user ? <Navigate to="/" /> : <RegisterPage />} />
+          <Route path="/" element={<PrivateRoute><FeedPage /></PrivateRoute>} />
+          <Route path="/profile/:id" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
+          <Route path="/messages" element={<PrivateRoute><MessagesPage /></PrivateRoute>} />
+          <Route path="/messages/:userId" element={<PrivateRoute><MessagesPage /></PrivateRoute>} />
+        </Routes>
+      </main>
+    </AuthContext.Provider>
+  )
+}
