@@ -5,9 +5,10 @@ import { login as loginApi } from '../services/api'
 
 export default function LoginPage() {
   const { login } = useAuth()
-  const [form, setForm]     = useState({ username: '', password: '' })
-  const [error, setError]   = useState('')
+  const [form, setForm]       = useState({ username: '', password: '' })
+  const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPw, setShowPw]   = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -16,56 +17,117 @@ export default function LoginPage() {
     try {
       const data = await loginApi(form.username, form.password)
       login(data.user, { access: data.access, refresh: data.refresh })
-    } catch (err) {
-      setError('Invalid username or password.')
+    } catch {
+      setError('Incorrect username or password. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+
   return (
     <div className="auth-page">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', maxWidth: 800, alignItems: 'center' }}>
-        {/* Branding */}
-        <div style={{ textAlign: 'center', marginBottom: 8 }}>
-          <div style={{ fontSize: 48, fontWeight: 900, color: '#1877f2', letterSpacing: -2 }}>facebook</div>
-          <p style={{ fontSize: 18, color: '#1c1e21', maxWidth: 340 }}>
-            Connect with friends and the world around you.
+      <div className="auth-grid">
+
+        {/* Branding — hidden on mobile */}
+        <div className="auth-brand">
+          <div className="auth-brand__logo">facebook</div>
+          <p className="auth-brand__tagline">
+            Connect with friends and the world around you on Facebook.
           </p>
         </div>
 
-        {/* Form */}
-        <div className="auth-box">
-          {error && <div className="error-msg">{error}</div>}
+        {/* Card */}
+        <div className="auth-card">
+          <h2 className="auth-card__title">Welcome back 👋</h2>
+          <p className="auth-card__subtitle">Log in to your Facebook account</p>
+
+          {error && (
+            <div className="alert alert--error">
+              <i className="bi bi-exclamation-circle-fill" />
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <input
-                placeholder="Username"
-                value={form.username}
-                onChange={e => setForm({ ...form, username: e.target.value })}
-                required
-              />
+              <label>Username</label>
+              <div className="input-icon-wrap">
+                <i className="bi bi-person" />
+                <input
+                  className="form-input"
+                  placeholder="Enter your username"
+                  value={form.username}
+                  onChange={set('username')}
+                  autoComplete="username"
+                  required
+                />
+              </div>
             </div>
+
             <div className="form-group">
-              <input
-                type="password"
-                placeholder="Password"
-                value={form.password}
-                onChange={e => setForm({ ...form, password: e.target.value })}
-                required
-              />
+              <label>Password</label>
+              <div className="input-icon-wrap" style={{ position: 'relative' }}>
+                <i className="bi bi-lock" />
+                <input
+                  className="form-input"
+                  type={showPw ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={form.password}
+                  onChange={set('password')}
+                  autoComplete="current-password"
+                  required
+                  style={{ paddingRight: 42 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  style={{
+                    position: 'absolute', right: 12, top: '50%',
+                    transform: 'translateY(-50%)', background: 'none',
+                    border: 'none', cursor: 'pointer', color: 'var(--text-3)',
+                    fontSize: 17, display: 'flex', alignItems: 'center'
+                  }}
+                >
+                  <i className={`bi bi-eye${showPw ? '-slash' : ''}`} />
+                </button>
+              </div>
             </div>
-            <button className="btn btn--primary btn--full" type="submit" disabled={loading}>
-              {loading ? 'Logging in…' : 'Log In'}
+
+            <div style={{ textAlign: 'right', marginBottom: 16 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--brand)', cursor: 'pointer' }}>
+                Forgot password?
+              </span>
+            </div>
+
+            <button
+              className="btn btn--primary btn--full btn--lg"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? (
+                <><i className="bi bi-arrow-repeat" style={{ animation: 'spin .6s linear infinite' }} /> Logging in…</>
+              ) : (
+                <><i className="bi bi-box-arrow-in-right" /> Log In</>
+              )}
             </button>
           </form>
-          <div className="auth-divider" />
+
+          <div className="auth-divider">or</div>
+
           <div style={{ textAlign: 'center' }}>
             <Link to="/register">
-              <button className="btn btn--green" style={{ padding: '10px 20px' }}>
+              <button className="btn btn--green btn--full btn--lg">
+                <i className="bi bi-person-plus" />
                 Create new account
               </button>
             </Link>
+          </div>
+
+          <div className="auth-footer">
+            Don't have an account?{' '}
+            <Link to="/register">Sign up</Link>
           </div>
         </div>
       </div>

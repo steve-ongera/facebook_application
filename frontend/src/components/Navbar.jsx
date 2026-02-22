@@ -8,34 +8,41 @@ export default function Navbar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState([])
-  const [showResults, setShowResults] = useState(false)
+  const [query, setQuery]         = useState('')
+  const [results, setResults]     = useState([])
+  const [showDrop, setShowDrop]   = useState(false)
   const searchRef = useRef(null)
 
+  /* Debounced search */
   useEffect(() => {
-    if (!query.trim()) { setResults([]); return }
+    if (!query.trim()) { setResults([]); setShowDrop(false); return }
     const t = setTimeout(async () => {
       try {
         const data = await searchUsers(query)
         setResults(data)
-        setShowResults(true)
+        setShowDrop(true)
       } catch {}
-    }, 300)
+    }, 280)
     return () => clearTimeout(t)
   }, [query])
 
+  /* Close dropdown on outside click */
   useEffect(() => {
     const handler = (e) => {
-      if (searchRef.current && !searchRef.current.contains(e.target)) {
-        setShowResults(false)
-      }
+      if (searchRef.current && !searchRef.current.contains(e.target)) setShowDrop(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const isActive = (path) => location.pathname === path
+  const isActive = (path) =>
+    path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
+
+  const goTo = (path) => {
+    setShowDrop(false)
+    setQuery('')
+    navigate(path)
+  }
 
   return (
     <nav className="navbar">
@@ -43,54 +50,81 @@ export default function Navbar() {
       <Link to="/" className="navbar__logo">facebook</Link>
 
       {/* Search */}
-      <div style={{ position: 'relative' }} ref={searchRef}>
+      <div className="navbar__search-wrap" ref={searchRef}>
         <div className="navbar__search">
-          <span>🔍</span>
+          <i className="bi bi-search" />
           <input
             placeholder="Search Facebook"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            onFocus={() => results.length && setShowResults(true)}
+            onFocus={() => results.length && setShowDrop(true)}
           />
+          {query && (
+            <button
+              style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              onClick={() => { setQuery(''); setResults([]); setShowDrop(false) }}
+            >
+              <i className="bi bi-x-circle-fill" style={{ fontSize: 15 }} />
+            </button>
+          )}
         </div>
-        {showResults && results.length > 0 && (
-          <div className="search-results">
+
+        {showDrop && results.length > 0 && (
+          <div className="search-dropdown">
+            <div className="search-dropdown__label">People</div>
             {results.map(u => (
               <div
                 key={u.id}
-                className="search-result-item"
-                onClick={() => { navigate(`/profile/${u.id}`); setShowResults(false); setQuery('') }}
+                className="search-item"
+                onClick={() => goTo(`/profile/${u.id}`)}
               >
-                <div className="search-result-item__avatar">
-                  <Avatar user={u} />
+                <Avatar user={u} size={40} />
+                <div>
+                  <div className="search-item__name">{u.first_name ? `${u.first_name} ${u.last_name}` : u.username}</div>
+                  <div className="search-item__sub">@{u.username}</div>
                 </div>
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{u.username}</span>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Nav Icons */}
-      <div className="navbar__center">
+      {/* Center tabs */}
+      <div className="navbar__tabs">
         <button
-          className={`navbar__icon-btn ${isActive('/') ? 'active' : ''}`}
-          onClick={() => navigate('/')}
+          className={`nav-tab ${isActive('/') ? 'active' : ''}`}
+          onClick={() => goTo('/')}
           title="Home"
-        >🏠</button>
+        >
+          <i className={`bi bi-house${isActive('/') ? '-fill' : ''}`} />
+        </button>
         <button
-          className={`navbar__icon-btn ${location.pathname.startsWith('/messages') ? 'active' : ''}`}
-          onClick={() => navigate('/messages')}
+          className={`nav-tab ${isActive('/messages') ? 'active' : ''}`}
+          onClick={() => goTo('/messages')}
           title="Messages"
-        >💬</button>
+        >
+          <i className={`bi bi-chat${isActive('/messages') ? '-fill' : ''}`} />
+        </button>
       </div>
 
-      {/* User */}
+      {/* Right actions */}
       <div className="navbar__right">
-        <div className="navbar__avatar" onClick={() => navigate(`/profile/${user?.id}`)}>
-          <Avatar user={user} />
+        <button className="navbar__icon-btn" title="Notifications">
+          <i className="bi bi-bell-fill" style={{ fontSize: 17 }} />
+        </button>
+
+        <div
+          className="navbar__avatar-btn"
+          onClick={() => goTo(`/profile/${user?.id}`)}
+          title="Profile"
+        >
+          <Avatar user={user} size={40} />
         </div>
-        <button className="btn btn--gray btn--sm" onClick={logout}>Logout</button>
+
+        <button className="btn btn--gray btn--sm" onClick={logout}>
+          <i className="bi bi-box-arrow-right" />
+          <span>Logout</span>
+        </button>
       </div>
     </nav>
   )
